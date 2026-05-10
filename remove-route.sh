@@ -1,24 +1,16 @@
 #!/usr/bin/env bash
 # Usage: ./remove-route.sh <subdomain>
 # Example: ./remove-route.sh mymbpr-demo
-#
-# Removes a public hostname from the mymbpr tunnel.
-# Requires CLOUDFLARE_API_TOKEN env var with "Cloudflare Tunnel: Edit" permission.
 
 set -euo pipefail
+source "$(dirname "$0")/_common.sh"
 
 SUBDOMAIN="${1:?Usage: $0 <subdomain>}"
-
-ACCOUNT_ID="15bfe332876061d9a548a4f3d6835657"
-TUNNEL_ID="3e3ddd46-93d1-4c68-bbaf-e04085c1bede"
-ZONE_ID="$(curl -sf "https://api.cloudflare.com/client/v4/zones?name=wormhole.work" \
-  -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN:?Set CLOUDFLARE_API_TOKEN env var}" \
-  | python3 -c "import json,sys; print(json.load(sys.stdin)['result'][0]['id'])")"
-DOMAIN="wormhole.work"
-API="https://api.cloudflare.com/client/v4"
-TOKEN="${CLOUDFLARE_API_TOKEN}"
-
 HOSTNAME="${SUBDOMAIN}.${DOMAIN}"
+
+ZONE_ID=$(curl -sf "${API}/zones?name=${DOMAIN}" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['result'][0]['id'])")
 
 echo "Fetching current tunnel config..."
 current=$(curl -sf "${API}/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
@@ -26,8 +18,7 @@ current=$(curl -sf "${API}/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/config
 
 existing=$(echo "$current" | python3 -c "
 import json, sys
-data = json.load(sys.stdin)
-rules = data.get('result', {}).get('config', {}).get('ingress', [])
+rules = json.load(sys.stdin).get('result', {}).get('config', {}).get('ingress', [])
 rules = [r for r in rules if r.get('service') != 'http_status:404']
 print(json.dumps(rules))
 ")
