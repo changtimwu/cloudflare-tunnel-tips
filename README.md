@@ -5,12 +5,32 @@
 Use `add-route.sh` to add a new public hostname to the `mymbpr` tunnel in one command:
 
 ```bash
-# One-time: set your API token in ~/.zshrc
-export CLOUDFLARE_API_TOKEN=your_token_here   # dash.cloudflare.com/profile/api-tokens → "Edit Cloudflare Tunnel" template
+# One-time: set your API token in ~/.zshrc (see screenshots below for how to create one)
+export CLOUDFLARE_API_TOKEN=your_token_here
 
 # Expose localhost:3000 at https://mymbpr-demo.wormhole.work
 ./add-route.sh mymbpr-demo 3000
 ```
+
+### Creating the API Token
+
+**Step 1** — Go to [dash.cloudflare.com/profile/api-tokens](https://dash.cloudflare.com/profile/api-tokens) and click **+ Create Token**.
+
+![Step 1 — User API Tokens page](cftun-step1.png)
+
+**Step 2** — There is no pre-built template for Cloudflare Tunnel. Under "Custom token", click **Get started**.
+
+![Step 2 — Select Custom Token](cftun-step2.png)
+
+**Step 3** — Name the token (e.g. `mytunnel-token`) and set Permissions to **Account → Cloudflare Tunnel → Edit**.
+
+![Step 3 — Configure token name and permissions](cftun-step3.png)
+
+**Step 4** — Review the summary ("All accounts - Cloudflare Tunnel:Edit") and click **Create Token**.
+
+![Step 4 — Confirm and create](cftun-step4.png)
+
+Copy the token value shown on the next screen — it is only displayed once.
 
 The script reads the current remote config, appends the new route, pushes it back via the Cloudflare API, and creates the DNS CNAME. The running `cloudflared` daemon picks it up immediately — no restart needed.
 
