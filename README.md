@@ -1,4 +1,4 @@
-# Cloudflare Tunnel Concepts
+# Cloudflare Tunnel Tips
 
 ## Quick: Expose a Local Port for a Demo
 
@@ -20,7 +20,84 @@ The [Cloudflare MCP for Claude Code](https://developers.cloudflare.com/agent-set
 
 ---
 
-## Mental Model
+## Fresh Laptop Setup
+
+### 1. Install cloudflared
+
+```bash
+brew install cloudflared
+```
+
+### 2. Log in to Cloudflare
+
+```bash
+cloudflared tunnel login
+```
+
+This opens a browser to authorize cloudflared. It saves a `cert.pem` to `~/.cloudflared/`.
+
+### 3. Download the tunnel credentials
+
+The tunnel already exists in Cloudflare (`mymbpr`, ID `3e3ddd46-93d1-4c68-bbaf-e04085c1bede`). You just need its credential file on the new machine.
+
+**Option A — copy from an existing machine:**
+
+```bash
+scp old-laptop:~/.cloudflared/3e3ddd46-93d1-4c68-bbaf-e04085c1bede.json ~/.cloudflared/
+```
+
+**Option B — download via the Cloudflare API:**
+
+```bash
+mkdir -p ~/.cloudflared
+curl -s "https://api.cloudflare.com/client/v4/accounts/15bfe332876061d9a548a4f3d6835657/cfd_tunnel/3e3ddd46-93d1-4c68-bbaf-e04085c1bede/token" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  | python3 -c "
+import json, sys
+token = json.load(sys.stdin)['result']
+import base64, json as j
+creds = j.loads(base64.b64decode(token.split('.')[1] + '=='))
+print(j.dumps({'AccountTag': creds['a'], 'TunnelID': creds['t'], 'TunnelSecret': creds['s']}))
+" > ~/.cloudflared/3e3ddd46-93d1-4c68-bbaf-e04085c1bede.json
+```
+
+### 4. Write the config file
+
+```bash
+cat > ~/.cloudflared/config.yml << 'EOF'
+tunnel: mymbpr
+credentials-file: /Users/YOUR_USERNAME/.cloudflared/3e3ddd46-93d1-4c68-bbaf-e04085c1bede.json
+
+ingress:
+  - service: http_status:404
+EOF
+```
+
+Replace `YOUR_USERNAME` with your actual macOS username (`whoami`).
+
+> The ingress rules here are just a local fallback. The real routes are managed remotely via the
+> Cloudflare Zero Trust dashboard and pushed to `cloudflared` at runtime.
+
+### 5. Start the tunnel
+
+```bash
+cloudflared tunnel run mymbpr
+```
+
+The tunnel connects and loads the remote config (all public hostnames already configured in the dashboard) automatically. No need to re-add routes — they live in Cloudflare, not on the machine.
+
+### 6. Run as a background service (optional)
+
+```bash
+sudo cloudflared service install
+sudo launchctl start com.cloudflare.cloudflared
+```
+
+---
+
+## Concepts
+
+### Mental Model
 
 ```
 Domain (wormhole.work)
@@ -40,9 +117,7 @@ Domain (wormhole.work)
 > Cloudflare's free Universal SSL wildcard (`*.wormhole.work`). Third-level subdomains like
 > `simple.mymbpr.wormhole.work` are not covered and will cause `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`.
 
----
-
-## What Each Piece Does
+### What Each Piece Does
 
 | Thing | Where it lives | What it does |
 |---|---|---|
@@ -53,22 +128,7 @@ Domain (wormhole.work)
 
 The dashboard config and DNS CNAME are created together when you add a public hostname — you don't manage them separately.
 
----
-
-## Setup Steps for a New App
-
-1. Make sure `cloudflared` is running: `cloudflared tunnel run mymbpr`
-2. Go to [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com) → **Networks → Tunnels → mymbpr → Configure**
-3. **Public Hostnames** tab → **Add a public hostname**
-   - Subdomain: `mymbpr-simple`
-   - Domain: `wormhole.work`
-   - Service Type: `HTTP`
-   - URL: `localhost:3000`
-4. Save — Cloudflare creates the DNS CNAME and issues the HTTPS cert automatically. The running `cloudflared` picks up the new route immediately, no restart needed.
-
----
-
-## Local config.yml vs Dashboard (Remote) Config
+### Local config.yml vs Dashboard (Remote) Config
 
 Cloudflare Tunnels support two ingress management modes:
 
@@ -80,26 +140,26 @@ Once a tunnel is remotely-managed, use the dashboard to add/remove routes. This 
 
 ---
 
-## Current Setup
+## Adding a New Route via Dashboard
 
-### mymbpr tunnel (this MacBook)
+1. Go to [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com) → **Networks → Tunnels → mymbpr → Configure**
+2. **Public Hostnames** tab → **Add a public hostname**
+   - Subdomain: `mymbpr-demo`
+   - Domain: `wormhole.work`
+   - Service Type: `HTTP`
+   - URL: `localhost:3000`
+3. Save — Cloudflare creates the DNS CNAME and issues the HTTPS cert automatically. The running `cloudflared` picks up the new route immediately, no restart needed.
+
+---
+
+## Current Routes (mymbpr tunnel)
 
 Tunnel ID: `3e3ddd46-93d1-4c68-bbaf-e04085c1bede`
-Credentials: `~/.cloudflared/3e3ddd46-93d1-4c68-bbaf-e04085c1bede.json`
-Config: `~/.cloudflared/config.yml`
 
 | Subdomain | Local service |
 |---|---|
 | `mymbpr-simple.wormhole.work` | `http://localhost:3000` |
 | `ssh.mymbpr.wormhole.work` | `ssh://localhost:22` |
-
-Run: `cloudflared tunnel run mymbpr`
-
-### timhometest tunnel (home machine)
-
-Tunnel ID: `21e2a22a-1eff-4fe7-bfeb-16dd2c684411`
-
-Active — running on a separate machine, managed independently.
 
 ---
 
@@ -112,6 +172,6 @@ cloudflared tunnel list
 # Tunnel details and active connections
 cloudflared tunnel info mymbpr
 
-# Start a tunnel (reads ~/.cloudflared/config.yml)
+# Start the tunnel
 cloudflared tunnel run mymbpr
 ```
