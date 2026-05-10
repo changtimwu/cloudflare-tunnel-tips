@@ -10,7 +10,24 @@ export CLOUDFLARE_API_TOKEN=your_token_here
 
 # Expose localhost:3000 at https://mymbpr-demo.wormhole.work
 ./add-route.sh mymbpr-demo 3000
+
+# List current routes
+./list-routes.sh
+
+# Remove a route
+./remove-route.sh mymbpr-demo
 ```
+
+The scripts never hardcode account or tunnel IDs. They read everything from cloudflared's own files:
+
+| What | Where it comes from |
+|---|---|
+| Tunnel name | `~/.cloudflared/config.yml` |
+| Account ID, Tunnel ID | `~/.cloudflared/<tunnel-id>.json` (written by `cloudflared tunnel login`) |
+| Domain | `.env` file alongside the scripts |
+| API token | `CLOUDFLARE_API_TOKEN` env var (set in `~/.zshrc`) |
+
+On a fresh machine, run `cloudflared tunnel login` once and copy the `.env` file — no IDs to look up.
 
 ### Creating the API Token
 
