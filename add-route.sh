@@ -15,7 +15,7 @@ current=$(curl -s "${API}/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configu
 
 existing=$(echo "$current" | python3 -c "
 import json, sys
-rules = json.load(sys.stdin).get('result', {}).get('config', {}).get('ingress', [])
+rules = (json.load(sys.stdin).get('result') or {}).get('config', {}).get('ingress', [])
 rules = [r for r in rules if r.get('service') != 'http_status:404']
 print(json.dumps(rules))
 ")
