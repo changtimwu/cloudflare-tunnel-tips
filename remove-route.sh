@@ -8,9 +8,16 @@ source "$(dirname "$0")/_common.sh"
 SUBDOMAIN="${1:?Usage: $0 <subdomain>}"
 HOSTNAME="${SUBDOMAIN}.${DOMAIN}"
 
-ZONE_ID=$(curl -sf "${API}/zones?name=${DOMAIN}" \
+ZONE_ID=$(curl -s "${API}/zones?name=${DOMAIN}" \
   -H "Authorization: Bearer ${TOKEN}" \
-  | python3 -c "import json,sys; print(json.load(sys.stdin)['result'][0]['id'])")
+  | python3 -c "
+import json, sys
+results = json.load(sys.stdin).get('result') or []
+if not results:
+    print('ERROR: Zone not found for domain: ${DOMAIN}. Check CLOUDFLARE_DOMAIN and API token zone permissions.', file=sys.stderr)
+    sys.exit(1)
+print(results[0]['id'])
+")
 
 echo "Fetching current tunnel config..."
 current=$(curl -s "${API}/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
