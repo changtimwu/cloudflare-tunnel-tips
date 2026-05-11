@@ -13,7 +13,7 @@ ZONE_ID=$(curl -sf "${API}/zones?name=${DOMAIN}" \
   | python3 -c "import json,sys; print(json.load(sys.stdin)['result'][0]['id'])")
 
 echo "Fetching current tunnel config..."
-current=$(curl -sf "${API}/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
+current=$(curl -s "${API}/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
   -H "Authorization: Bearer ${TOKEN}")
 
 existing=$(echo "$current" | python3 -c "

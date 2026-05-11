@@ -10,7 +10,7 @@ PORT="${2:?Usage: $0 <subdomain> <port>}"
 HOSTNAME="${SUBDOMAIN}.${DOMAIN}"
 
 echo "Fetching current tunnel config..."
-current=$(curl -sf "${API}/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
+current=$(curl -s "${API}/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" \
   -H "Authorization: Bearer ${TOKEN}")
 
 existing=$(echo "$current" | python3 -c "
