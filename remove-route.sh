@@ -56,17 +56,27 @@ if ! echo "$result" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(
 fi
 
 echo "Removing DNS CNAME..."
-record_id=$(curl -sf "${API}/zones/${ZONE_ID}/dns_records?name=${HOSTNAME}&type=CNAME" \
+record_id=$(curl -s "${API}/zones/${ZONE_ID}/dns_records?name=${HOSTNAME}&type=CNAME" \
   -H "Authorization: Bearer ${TOKEN}" \
   | python3 -c "
 import json, sys
-results = json.load(sys.stdin).get('result', [])
+data = json.load(sys.stdin)
+if not data.get('success'):
+    errs = data.get('errors', [])
+    print(f'ERROR: DNS records lookup failed: {errs}', file=sys.stderr)
+    sys.exit(1)
+results = data.get('result') or []
 print(results[0]['id'] if results else '')
 ")
 
 if [ -n "$record_id" ]; then
-  curl -sf -X DELETE "${API}/zones/${ZONE_ID}/dns_records/${record_id}" \
-    -H "Authorization: Bearer ${TOKEN}" > /dev/null
+  result=$(curl -s -X DELETE "${API}/zones/${ZONE_ID}/dns_records/${record_id}" \
+    -H "Authorization: Bearer ${TOKEN}")
+  if ! echo "$result" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if d.get('success') else 1)"; then
+    echo "ERROR: DNS delete failed:"
+    echo "$result" | python3 -m json.tool
+    exit 1
+  fi
   echo "DNS CNAME removed."
 else
   echo "No DNS CNAME found for ${HOSTNAME} (may have already been removed)."
