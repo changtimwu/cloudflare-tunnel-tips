@@ -38,11 +38,15 @@ On a fresh machine, run the install command from the Cloudflare dashboard and co
 
 ![Step 2 — Select Custom Token](cftun-step2.png)
 
-**Step 3** — Name the token (e.g. `mytunnel-token`) and set Permissions to **Account → Cloudflare Tunnel → Edit**.
+**Step 3** — Name the token (e.g. `mytunnel-token`) and add two permissions:
+- **Account → Cloudflare Tunnel → Edit**
+- **Zone → Zone → Read**
+
+The Zone:Read permission is required by `remove-route.sh` to look up the Zone ID when deleting DNS CNAME records.
 
 ![Step 3 — Configure token name and permissions](cftun-step3.png)
 
-**Step 4** — Review the summary ("All accounts - Cloudflare Tunnel:Edit") and click **Create Token**.
+**Step 4** — Review the summary and click **Create Token**.
 
 ![Step 4 — Confirm and create](cftun-step4.png)
 
