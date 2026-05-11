@@ -22,12 +22,11 @@ The scripts never hardcode account or tunnel IDs. They read everything from clou
 
 | What | Where it comes from |
 |---|---|
-| Tunnel name | `~/.cloudflared/config.yml` |
-| Account ID, Tunnel ID | `~/.cloudflared/<tunnel-id>.json` (written by `cloudflared tunnel login`) |
+| Tunnel name, Account ID, Tunnel ID | `~/.cloudflared/<tunnel-id>.json` (written by `cloudflared service install <token>`) |
 | Domain | `.env` file alongside the scripts |
 | API token | `CLOUDFLARE_API_TOKEN` env var (set in `~/.zshrc`) |
 
-On a fresh machine, run `cloudflared tunnel login` once and copy the `.env` file — no IDs to look up.
+On a fresh machine, run the install command from the Cloudflare dashboard and copy the `.env` file — no IDs to look up.
 
 ### Creating the API Token
 
@@ -65,70 +64,51 @@ The [Cloudflare MCP for Claude Code](https://developers.cloudflare.com/agent-set
 brew install cloudflared
 ```
 
-### 2. Log in to Cloudflare
+### 2. Create the tunnel on the Cloudflare dashboard
+
+Go to **[dash.cloudflare.com → Zero Trust → Networks → Tunnels](https://one.dash.cloudflare.com)** and click **+ Add a tunnel**.
+
+Choose **Cloudflared** as the connector type, give the tunnel a name, and proceed to the **Install connector** step. Cloudflare will show a one-line install command that embeds the tunnel token, for example:
 
 ```bash
-cloudflared tunnel login
+sudo cloudflared service install eyJhIjoiMTViZmUz...
 ```
 
-This opens a browser to authorize cloudflared. It saves a `cert.pem` to `~/.cloudflared/`.
+Run that command on the host machine. It saves the tunnel credentials to `~/.cloudflared/`, writes a `config.yml`, and installs `cloudflared` as a system service that starts on boot.
 
-### 3. Download the tunnel credentials
+> The full install command for your specific tunnel is shown in the dashboard at
+> **dash.cloudflare.com → Zero Trust → Networks → Tunnels → [your tunnel] → Configure → Install connector**.
 
-The tunnel already exists in Cloudflare (`mymbpr`, ID `3e3ddd46-93d1-4c68-bbaf-e04085c1bede`). You just need its credential file on the new machine.
-
-**Option A — copy from an existing machine:**
+### 3. Verify the tunnel is running
 
 ```bash
-scp old-laptop:~/.cloudflared/3e3ddd46-93d1-4c68-bbaf-e04085c1bede.json ~/.cloudflared/
+cloudflared tunnel list
 ```
 
-**Option B — download via the Cloudflare API:**
+The tunnel status should show **HEALTHY** in the Zero Trust dashboard within a few seconds.
+
+### 4. Copy the `.env` file from another machine
 
 ```bash
-mkdir -p ~/.cloudflared
-curl -s "https://api.cloudflare.com/client/v4/accounts/15bfe332876061d9a548a4f3d6835657/cfd_tunnel/3e3ddd46-93d1-4c68-bbaf-e04085c1bede/token" \
-  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-  | python3 -c "
-import json, sys
-token = json.load(sys.stdin)['result']
-import base64, json as j
-creds = j.loads(base64.b64decode(token.split('.')[1] + '=='))
-print(j.dumps({'AccountTag': creds['a'], 'TunnelID': creds['t'], 'TunnelSecret': creds['s']}))
-" > ~/.cloudflared/3e3ddd46-93d1-4c68-bbaf-e04085c1bede.json
+scp old-machine:~/cloudflare-tunnel-tips/.env ~/cloudflare-tunnel-tips/.env
 ```
 
-### 4. Write the config file
+Or create it fresh — see `.env.example` in this repo.
+
+### Reconnecting an existing tunnel on a new machine
+
+If the tunnel already exists (created from another machine) and you just need to run it here:
+
+**Option A — copy credentials from the old machine:**
 
 ```bash
-cat > ~/.cloudflared/config.yml << 'EOF'
-tunnel: mymbpr
-credentials-file: /Users/YOUR_USERNAME/.cloudflared/3e3ddd46-93d1-4c68-bbaf-e04085c1bede.json
-
-ingress:
-  - service: http_status:404
-EOF
-```
-
-Replace `YOUR_USERNAME` with your actual macOS username (`whoami`).
-
-> The ingress rules here are just a local fallback. The real routes are managed remotely via the
-> Cloudflare Zero Trust dashboard and pushed to `cloudflared` at runtime.
-
-### 5. Start the tunnel
-
-```bash
-cloudflared tunnel run mymbpr
-```
-
-The tunnel connects and loads the remote config (all public hostnames already configured in the dashboard) automatically. No need to re-add routes — they live in Cloudflare, not on the machine.
-
-### 6. Run as a background service (optional)
-
-```bash
+scp old-machine:~/.cloudflared/*.json ~/.cloudflared/
 sudo cloudflared service install
-sudo launchctl start com.cloudflare.cloudflared
 ```
+
+**Option B — re-run the install command from the dashboard:**
+
+Go to **Networks → Tunnels → [your tunnel] → Configure → Install connector** and run the shown command again. It fetches a fresh token for the same tunnel.
 
 ---
 
