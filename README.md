@@ -83,21 +83,52 @@ To uninstall: `rm ~/.claude/skills/cf-publish`.
 ### 1. Install cloudflared
 
 ```bash
-brew install cloudflared
+brew install cloudflared          # macOS
+# or see https://pkg.cloudflare.com/ for other platforms
 ```
 
-### 2. Create the tunnel & install the connector
+### 2. Clone this repo and configure `.env`
+
+```bash
+git clone https://github.com/changtimwu/cloudflare-tunnel-tips.git
+cd cloudflare-tunnel-tips
+cp .env.example .env
+$EDITOR .env
+```
+
+`.env` must contain:
+
+```bash
+CLOUDFLARE_DOMAIN=wormhole.work                       # your zone
+CLOUDFLARE_API_TOKEN=cfut_xxxxxxxxxxxxxxxxxxxxxxxx    # see "Creating the API Token" above
+CLOUDFLARE_ACCOUNT_ID=15bfe332876061d9a548a4f3d6835657 # see note below
+```
+
+> **Why `CLOUDFLARE_ACCOUNT_ID` is required:** the API token created above has resource-scoped
+> permissions (`Cloudflare Tunnel:Edit`, `Zone:Read`, `DNS:Edit`) but no `Account:Read`, so
+> `GET /accounts` returns success with an empty list and the account ID must be supplied directly.
+> Find it in **dash.cloudflare.com → Account Home** (right sidebar), or in any existing
+> `~/.cloudflared/<tunnel-id>.json` under the `AccountTag` field.
+
+### 3. Create the tunnel & install the connector
 
 **Option A — fully CLI (recommended):**
 
 ```bash
-# Creates the tunnel if it doesn't exist, fetches the install token, installs the service
-sudo cloudflared service install "$(./get-tunnel-token.sh <tunnel-name>)"
+sudo cloudflared service install "$(./get-tunnel-token.sh mylaptop)"
 ```
 
-`get-tunnel-token.sh` uses `$CLOUDFLARE_API_TOKEN` to find (or create) the named tunnel and fetch its install token from the Cloudflare API — the same token the dashboard's "Install connector" page shows. The tunnel is created in **remotely-managed** mode so the route scripts work against it directly.
+This one command:
+1. Calls `GET /accounts/{id}/cfd_tunnel?name=mylaptop` — looks up the tunnel.
+2. If not found, calls `POST /accounts/{id}/cfd_tunnel` to create it (remotely-managed, random secret).
+3. Calls `GET /accounts/{id}/cfd_tunnel/{tunnel-id}/token` — fetches the install token (same value the dashboard shows).
+4. `cloudflared service install <token>` writes `~/.cloudflared/<tunnel-id>.json`, generates `config.yml`, and registers cloudflared as a system service that starts on boot.
 
-If your token can see more than one account, set `CLOUDFLARE_ACCOUNT_ID` in `.env`.
+The tunnel is created in **remotely-managed** mode so the route scripts (`add-route.sh`, `list-routes.sh`, `remove-route.sh`) work against it directly via the API.
+
+> Use `./test-tunnel-token.sh` first if you want to verify each API call independently — it walks
+> through token verify → list accounts → list tunnels → fetch token, printing the outcome of
+> each step.
 
 **Option B — copy from the dashboard:**
 
@@ -107,9 +138,7 @@ Go to **[dash.cloudflare.com → Zero Trust → Networks → Tunnels](https://on
 sudo cloudflared service install eyJhIjoiMTViZmUz...
 ```
 
-Either option saves the tunnel credentials to `~/.cloudflared/`, writes a `config.yml`, and installs `cloudflared` as a system service that starts on boot.
-
-### 3. Verify the tunnel is running
+### 4. Verify the tunnel is running
 
 ```bash
 cloudflared tunnel list
@@ -117,28 +146,21 @@ cloudflared tunnel list
 
 The tunnel status should show **HEALTHY** in the Zero Trust dashboard within a few seconds.
 
-### 4. Copy the `.env` file from another machine
+### 5. Publish a route
 
 ```bash
-scp old-machine:~/cloudflare-tunnel-tips/.env ~/cloudflare-tunnel-tips/.env
+./add-route.sh demo 3000
+# → https://demo.wormhole.work routes to localhost:3000
 ```
-
-Or create it fresh — see `.env.example` in this repo.
 
 ### Reconnecting an existing tunnel on a new machine
 
-If the tunnel already exists (created from another machine) and you just need to run it here:
-
-**Option A — copy credentials from the old machine:**
+If a tunnel already exists (created from another machine) and you just need to run it here, Option A above works exactly the same — pass the existing tunnel name and `get-tunnel-token.sh` will find it (no creation) and emit its current install token. Or copy credentials manually:
 
 ```bash
 scp old-machine:~/.cloudflared/*.json ~/.cloudflared/
 sudo cloudflared service install
 ```
-
-**Option B — re-run the install command from the dashboard:**
-
-Go to **Networks → Tunnels → [your tunnel] → Configure → Install connector** and run the shown command again. It fetches a fresh token for the same tunnel.
 
 ---
 
