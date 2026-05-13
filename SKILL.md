@@ -33,6 +33,12 @@ The `.env` file must define `CLOUDFLARE_DOMAIN=...`. The API token needs three p
 
 Scripts live in this skill directory. Always invoke with the full path (set `SKILL_DIR` to the directory containing this `SKILL.md`).
 
+**Bootstrap a new host** (only when `~/.cloudflared/*.json` doesn't exist):
+```bash
+sudo cloudflared service install "$("$SKILL_DIR/get-tunnel-token.sh" <tunnel-name>)"
+```
+Creates the named tunnel via API if missing, fetches the install token, and registers cloudflared as a system service. Pick a tunnel name that identifies the machine (e.g. `mymbpr`, `homelab`, `$(hostname -s)`).
+
 **Publish a local port:**
 ```bash
 "$SKILL_DIR/add-route.sh" <subdomain> <port>

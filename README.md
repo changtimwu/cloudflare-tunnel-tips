@@ -86,20 +86,28 @@ To uninstall: `rm ~/.claude/skills/cf-publish`.
 brew install cloudflared
 ```
 
-### 2. Create the tunnel on the Cloudflare dashboard
+### 2. Create the tunnel & install the connector
 
-Go to **[dash.cloudflare.com → Zero Trust → Networks → Tunnels](https://one.dash.cloudflare.com)** and click **+ Add a tunnel**.
+**Option A — fully CLI (recommended):**
 
-Choose **Cloudflared** as the connector type, give the tunnel a name, and proceed to the **Install connector** step. Cloudflare will show a one-line install command that embeds the tunnel token, for example:
+```bash
+# Creates the tunnel if it doesn't exist, fetches the install token, installs the service
+sudo cloudflared service install "$(./get-tunnel-token.sh <tunnel-name>)"
+```
+
+`get-tunnel-token.sh` uses `$CLOUDFLARE_API_TOKEN` to find (or create) the named tunnel and fetch its install token from the Cloudflare API — the same token the dashboard's "Install connector" page shows. The tunnel is created in **remotely-managed** mode so the route scripts work against it directly.
+
+If your token can see more than one account, set `CLOUDFLARE_ACCOUNT_ID` in `.env`.
+
+**Option B — copy from the dashboard:**
+
+Go to **[dash.cloudflare.com → Zero Trust → Networks → Tunnels](https://one.dash.cloudflare.com)** → **+ Add a tunnel** → **Cloudflared**, name the tunnel, and copy the one-line install command from the **Install connector** step:
 
 ```bash
 sudo cloudflared service install eyJhIjoiMTViZmUz...
 ```
 
-Run that command on the host machine. It saves the tunnel credentials to `~/.cloudflared/`, writes a `config.yml`, and installs `cloudflared` as a system service that starts on boot.
-
-> The full install command for your specific tunnel is shown in the dashboard at
-> **dash.cloudflare.com → Zero Trust → Networks → Tunnels → [your tunnel] → Configure → Install connector**.
+Either option saves the tunnel credentials to `~/.cloudflared/`, writes a `config.yml`, and installs `cloudflared` as a system service that starts on boot.
 
 ### 3. Verify the tunnel is running
 
