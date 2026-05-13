@@ -38,7 +38,8 @@ if not data.get('success'):
     sys.exit(1)
 accs = data.get('result') or []
 if len(accs) == 0:
-    print('ERROR: no accounts visible to this token.', file=sys.stderr)
+    print('ERROR: token has no Account:Read permission (returned 0 accounts).', file=sys.stderr)
+    print('Hint: set CLOUDFLARE_ACCOUNT_ID in .env — read it from any ~/.cloudflared/*.json (AccountTag).', file=sys.stderr)
     sys.exit(1)
 if len(accs) > 1:
     print(f'ERROR: {len(accs)} accounts visible — set CLOUDFLARE_ACCOUNT_ID to one of:', file=sys.stderr)
