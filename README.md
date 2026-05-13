@@ -59,22 +59,22 @@ The script reads the current remote config, appends the new route, pushes it bac
 
 The [Cloudflare MCP for Claude Code](https://developers.cloudflare.com/agent-setup/claude-code/) is focused on **developer platform products** — Workers, KV, R2, D1, Hyperdrive. It has no tools for Cloudflare Tunnel management. The only way to automate tunnel routes from Claude Code is to call the Cloudflare REST API directly, which is what `add-route.sh` does.
 
-### Install as a Claude Code skill
+### Install as a Claude Code plugin
 
-The repo ships a `SKILL.md` so any Claude Code session can publish a local port by saying things like "expose port 3000" or "give me a public URL for localhost:8080".
+The repo is laid out as a Claude Code plugin (`.claude-plugin/plugin.json` + `skills/cf-publish/SKILL.md`) so any Claude Code session can publish a local port by saying things like "expose port 3000" or "give me a public URL for localhost:8080".
 
 ```bash
-# One-time install (symlink so updates flow through `git pull`)
-mkdir -p ~/.claude/skills
-ln -s "$(pwd)" ~/.claude/skills/cf-publish
+# One-time install (symlink the whole repo; `git pull` keeps it up to date)
+ln -s "$(pwd)" ~/.claude/plugins/cf-publish
 
-# Verify
-ls ~/.claude/skills/cf-publish/SKILL.md
+# Verify the plugin layout
+ls ~/.claude/plugins/cf-publish/.claude-plugin/plugin.json
+ls ~/.claude/plugins/cf-publish/skills/cf-publish/SKILL.md
 ```
 
-After this, `claude` running in any directory will auto-discover the skill from its description. Prerequisites still apply per-machine: `cloudflared` installed, tunnel created (see Fresh Laptop Setup below), API token in `$CLOUDFLARE_API_TOKEN`, and a `.env` file with `CLOUDFLARE_DOMAIN` in the skill directory.
+Prerequisites still apply per-machine: `cloudflared` installed, tunnel created (see Fresh Laptop Setup below), and a `.env` file in this directory with `CLOUDFLARE_DOMAIN`, `CLOUDFLARE_API_TOKEN`, and `CLOUDFLARE_ACCOUNT_ID`.
 
-To uninstall: `rm ~/.claude/skills/cf-publish`.
+To uninstall: `rm ~/.claude/plugins/cf-publish`.
 
 ---
 

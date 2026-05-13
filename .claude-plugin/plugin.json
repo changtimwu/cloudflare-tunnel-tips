@@ -1,0 +1,16 @@
+{
+  "name": "cf-publish",
+  "description": "Expose a local port to the internet via Cloudflare Tunnel. Adds/lists/removes public hostnames mapped to localhost:PORT, plus a one-line bootstrap that creates tunnels and installs the cloudflared service.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Tim Wu"
+  },
+  "keywords": [
+    "cloudflare",
+    "tunnel",
+    "cloudflared",
+    "publish",
+    "expose",
+    "localhost"
+  ]
+}

@@ -2,7 +2,16 @@
 # Sourced by add-route.sh / remove-route.sh / list-routes.sh
 # Reads tunnel identity from cloudflared's own config files — no hardcoded IDs.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks so .env is found relative to the real script location
+# (works when invoked through a plugin/skill symlink). Bash 3.2 compatible.
+_src="${BASH_SOURCE[0]}"
+while [ -h "$_src" ]; do
+  _dir="$(cd -P "$(dirname "$_src")" && pwd)"
+  _src="$(readlink "$_src")"
+  [[ "$_src" != /* ]] && _src="${_dir}/${_src}"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$_src")" && pwd)"
+unset _src _dir
 
 # Load CLOUDFLARE_DOMAIN (and optionally CLOUDFLARE_API_TOKEN) from .env
 if [ -f "${SCRIPT_DIR}/.env" ]; then
